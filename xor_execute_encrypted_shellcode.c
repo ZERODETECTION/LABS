@@ -35,7 +35,7 @@ unsigned char buf[] =
     xor_encrypt(buf, len, key);
     
     // SHOW DECRYPTED SHELLCODE 
-    printf("Entschlüsselter Inhalt: ");
+    printf("Decrypt shellcode: ");
     for (size_t i = 0; i < len; i++) {
         printf("%02X ", buf[i]);
     }
