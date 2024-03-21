@@ -1,5 +1,7 @@
 // https://www.zerodetection.net/blog/understanding-dll-injection-techniques-and-implications
+// msfvenom -p windows/x64/messagebox TEXT=zerodetection TITLE=zerodetection -f dll -o messagebox.dll
 // x86_64-w64-mingw32-gcc dll_injection.c -o dll_injection.exe
+
 
 #include <windows.h>
 #include <stdio.h>
