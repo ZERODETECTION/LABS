@@ -1,3 +1,5 @@
+// https://www.zerodetection.net/blog/minimal-shellcode-loader-in-c-a-step-by-step-guide
+
 #include "windows.h"
 
 int main()
