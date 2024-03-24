@@ -9,11 +9,11 @@ int main() {
     char domainName[MAX_DOMAIN_NAME_LENGTH + 1];
     DWORD size = MAX_DOMAIN_NAME_LENGTH + 1;
 
-    // GET DOMAIN
+    // Ruft die DNS-Domäne des Computers ab
     if (GetComputerNameEx(ComputerNameDnsDomain, domainName, &size)) {
-        printf("Domain: %s\n", domainName);
+        printf("Die DNS-Domäne des Computers ist: %s\n", domainName);
     } else {
-        perror("Error");
+        perror("Fehler beim Abrufen der DNS-Domäne des Computers");
         return 1;
     }
 
