@@ -5,7 +5,9 @@
 #include <ws2tcpip.h>
 
 #define PACKET_SIZE 64
+#define REPLY_BUFFER_SIZE 1024
 #define ICMP_ECHO_REQUEST 8
+#define ICMP_ECHO_REPLY 0
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -60,6 +62,19 @@ void craft_icmp_packet(char *packet, int sequence) {
     icmp_header->checksum = checksum(icmp_header, PACKET_SIZE);
 }
 
+// ICMP-Antwort verarbeiten
+void process_icmp_reply(char *reply, int size) {
+    ICMP_HEADER *icmp_header = (ICMP_HEADER *)reply;
+    if (icmp_header->type == ICMP_ECHO_REPLY) {
+        printf("Ping-Antwort empfangen:\n");
+        printf("  Typ: %d\n", icmp_header->type);
+        printf("  Code: %d\n", icmp_header->code);
+        printf("  ID: %d\n", icmp_header->id);
+        printf("  Sequenz: %d\n", icmp_header->seq);
+        // Weitere Felder können hier je nach Bedarf ausgegeben werden
+    }
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         printf("Verwendung: %s <Ziel-IP-Adresse>\n", argv[0]);
@@ -73,6 +88,7 @@ int main(int argc, char *argv[]) {
     }
 
     char packet[PACKET_SIZE];
+    char reply[REPLY_BUFFER_SIZE]; // ICMP-Antwort-Puffer
     struct sockaddr_in dest_addr;
     SOCKET sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 
@@ -96,6 +112,19 @@ int main(int argc, char *argv[]) {
         }
 
         printf("Ping gesendet an %s\n", argv[1]);
+
+        // ICMP-Antwort empfangen
+        int addr_len = sizeof(dest_addr);
+        int bytes_received = recvfrom(sockfd, reply, REPLY_BUFFER_SIZE, 0, (struct sockaddr *)&dest_addr, &addr_len);
+        if (bytes_received == SOCKET_ERROR) {
+            printf("Fehler beim Empfangen der ICMP-Antwort: %d\n", WSAGetLastError());
+            return 1;
+        }
+        else if (bytes_received > 0) {
+            printf("Empfangene ICMP-Antwort (%d Bytes):\n", bytes_received);
+            process_icmp_reply(reply, bytes_received);
+        }
+
         sequence++;
         Sleep(1000); // Wartezeit zwischen den Ping-Paketen in Millisekunden
     }
